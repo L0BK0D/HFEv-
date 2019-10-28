@@ -43,7 +43,8 @@ invert := function(d, univF, S, T, n, m, v)
   // T^(-1)*d; // incompatible coefficient rings
   roots := [];
   while #roots eq 0 do
-    MPF2n_invT_d := invert_phi(Matrix(F2,m,1,[&+[d[i]*(T^(-1))[k,i] : i in [1..m]] : k in [1..m]]), n);
+    completion := Matrix(n-m, 1, [Random(F2) : i in [1..n-m]]);
+    MPF2n_invT_d := invert_phi(Matrix(F2,n,1,[&+[d[i]*(T^(-1))[k,i] : i in [1..m]] + &+[completion[i]*(T^(-1))[k,i+m] : i in [1..n-m]] : k in [1..n]]), n);
     vinegar := [Random(F2) : k in [1..v]]; // TODO: change from Random to ordered logic
     F_with_these_Vs := PF2n_to_UPF2n(Evaluate(univF, [PF2n.1] cat [vinegar[k] : k in [1..v]]));
     roots := Roots(F_with_these_Vs-MPF2n_invT_d);

@@ -3,20 +3,20 @@ load "HFE-_generate_keys.m";
 invert_phi := function(vector,l)
   if Type(vector) eq SeqEnum then
     sum := &+ [vector[k]*a^(k-1) : k in [1..#vector]];
-    if l gt #vector then
-      sum +:= &+ [Random(F2)*a^(k-1) : k in [1..(l-#vector)]];
-    end if;
+    // if l gt #vector then
+    //   sum +:= &+ [Random(F2)*a^(k-1) : k in [1..(l-#vector)]];
+    // end if;
     return sum;
   else
-    sum := 0;
-    for k in [1..l] do
-      try
-        sum +:= vector[k][1]*a^(k-1);
-      catch e
-        sum +:= Random(F2)*a^(k-1);
-      end try;
-    end for;
-    return sum;
+    // sum := 0;
+    // for k in [1..l] do
+    //   // try
+    //   //   sum +:= vector[k][1]*a^(k-1);
+    //   // catch e
+    //   //   sum +:= Random(F2)*a^(k-1);
+    //   // end try;
+    // end for;
+    return &+ [vector[k][1]*a^(k-1) : k in [1..l]];
   end if;
 end function;
 
@@ -35,20 +35,31 @@ cipher := function(message, public_key)
 end function;
 
 apply_F := function(message,univF) // you still need to reduce the dimension after that.
-  MPF2n_message := invert_phi(message, n); // = &+ [message[k]*a^(k-1) : k in [1..n]];
+  MPF2n_message := invert_phi(message,n); //, n); // = &+ [message[k]*a^(k-1) : k in [1..n]];
   return Evaluate(univF,MPF2n_message);
 end function;
 
 invert := function(d, univF, S, T, n, m)
   // T^(-1)*d; // incompatible coefficient rings
   roots := [];
+  iter := 0;
   while #roots eq 0 do
-    MPF2n_invT_d := invert_phi(Matrix(F2,m,1,[&+[d[i]*(T^(-1))[k,i] : i in [1..m]] : k in [1..m]]), n);
+    completion := Matrix(n-m, 1, [0 : i in [1..n-m]]);
+    bin_iter := Intseq(iter, 2);
+    for i in [1..#bin_iter] do
+      completion[n-m-i+1][1] := bin_iter[#bin_iter-i+1];
+    end for;
+    iter +:= 1;
+    invT := T^(-1);
+    invT_d := Matrix(F2,n,1,[&+[d[i]*invT[k,i] : i in [1..m]] + &+ [completion[i]*invT[k,i+m] : i in [1..n-m]] : k in [1..n]]);
+    MPF2n_invT_d := invert_phi(invT_d, n);
     roots := Roots(univF-MPF2n_invT_d);
   end while;
-  r := Random(1,#roots);  // maybe we should give more weight to roots with higher multiplicity? -> TODO
-  vect_r := phi(roots[r][1],n);  // vertical matrix in F2;
-  return Matrix(F2,n,1,[&+[vect_r[i][1]*(S^(-1))[k,i] : i in [1..n]] : k in [1..n]]);
+  r := Random(roots);  // maybe we should give more weight to roots with higher multiplicity? -> TODO
+  vect_r := phi(r[1],n);  // vertical matrix in F2;
+  print iter, " complétion.s testée.s pour l'inversion.";
+  invS := S^(-1);
+  return Matrix(F2,n,1,[&+[vect_r[i][1]*invS[k,i] : i in [1..n]] : k in [1..n]]);
 end function;
 
 sign := function(message, univF, S, T, n, m)
@@ -57,7 +68,10 @@ sign := function(message, univF, S, T, n, m)
   found_inverse := false;
   iter := 1;
   while found_inverse eq false do
-    D := Matrix(F2,n,1,[H[k] : k in [1..n]]);
+    D := Matrix(F2,n,1,[0 : k in [1..n]]);
+    for k in [1..Minimum(n,#H)] do
+      D[k][1] := H[k];
+    end for;
     DxorSi := D + Si;    // addition in F2 is a xor operation.
     try
       Si := invert(DxorSi, univF, S, T, n, m);
@@ -79,7 +93,10 @@ check_signature := function(signature, message, public_key, nb_ite, m)
     // D[i] := Vector(F2,[H[k] : k in [1..n]]);
     H := Intseq(Hash(H),2);
   end for;
-  D := Matrix(F2,m,1,[H[k] : k in [1..m]]);
+  D := Matrix(F2,m,1,[0 : k in [1..m]]);
+  for k in [1..Minimum(m,#H)] do
+    D[k][1] := H[k];
+  end for;
   // for i in [(nb_ite-1)..0] do
   //   Si := Matrix(F2,n,1,[Evaluate(public_key, [Si[k]: k in [1..n]])[k] : k in [1..n]]) + D[i];
   // end for;

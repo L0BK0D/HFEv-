@@ -1,5 +1,5 @@
 
-n := 5; // messages length.  // from 21 and on, Zech log tables are used ; for lesser n values, the exponents go up without any limitation.
+n := 4; // messages length.  // from 21 and on, Zech log tables are used ; for lesser n values, the exponents go up without any limitation.
 D := 5; // degree of the F polynom.
 m := n-1; // number of equations in the f polynomial system.
 v := 2; // number of vinegar variables.
@@ -73,8 +73,8 @@ print "F(X) = ", univF;
 // Fbis := MPF2n_to_MPF2(F);
 // Fbis;
 
-get_pol_sys_fi := function(F,n,m)  // we will use the canonical basis
-  pol_sys_fi := [ 0 : i in [0..(m-1)]];
+get_pol_sys_fi := function(F,n)  // we will use the canonical basis
+  pol_sys_fi := [ 0 : i in [0..(n-1)]];
   pol_sys_fi := ChangeUniverse(pol_sys_fi, MPF2n); // default universe is the universe of integers.
   Coeffs := Coefficients(F);
   Monoms := Monomials(F);
@@ -90,7 +90,7 @@ get_pol_sys_fi := function(F,n,m)  // we will use the canonical basis
         mon := MPF2n.i;
       end if;
     end for;
-    for k in [1..Minimum(m,#b_Coeffs)] do
+    for k in [1..#b_Coeffs] do
       if b_Coeffs[k] eq 1 then
         pol_sys_fi[k] := pol_sys_fi[k] + mon;
       end if;
@@ -99,18 +99,18 @@ get_pol_sys_fi := function(F,n,m)  // we will use the canonical basis
   return pol_sys_fi;
 end function;
 
-pol_sys_fi := get_pol_sys_fi(F,n,m);
+pol_sys_fi := get_pol_sys_fi(F,n);
 print("Système polynomial f : ");
 pol_sys_fi;
 
 
 S := RandomMatrix(F2,n+v,n+v);
-T := RandomMatrix(F2,m,m);
+T := RandomMatrix(F2,n,n);
 while Determinant(S) eq 0 do
   S := RandomMatrix(F2,n+v,n+v);
 end while;
 while Determinant(T) eq 0 do
-  T := RandomMatrix(F2,m,m);
+  T := RandomMatrix(F2,n,n);
 end while;
 S := ChangeRing(S, MPF2n); // to allow multiplication with elements in MPF2n
 T := ChangeRing(T, MPF2n);
@@ -127,9 +127,9 @@ T;
 x := Matrix(n+v,1,[MPF2n.i : i in [1..n+v]]);
 Sx := S*x;
 
-get_pol_sys_fiSx := function(pol_sys_fi, Sx, n, m)
-  pol_sys_fiSx := Matrix(MPF2n, m, 1, [0 : i in [1..m]]);
-  for i in [1..m] do
+get_pol_sys_fiSx := function(pol_sys_fi, Sx, n)
+  pol_sys_fiSx := Matrix(MPF2n, n, 1, [0 : i in [1..n]]);
+  for i in [1..n] do
     Monoms := Monomials(pol_sys_fi[i]);
     for mon in Monoms do
       Exps := Exponents(mon);
@@ -152,8 +152,8 @@ get_pol_sys_fiSx := function(pol_sys_fi, Sx, n, m)
   return pol_sys_fiSx;
 end function;
 
-pol_sys_fiSx := get_pol_sys_fiSx(pol_sys_fi, Sx, n, m);
+pol_sys_fiSx := get_pol_sys_fiSx(pol_sys_fi, Sx, n);
 
-public_key := T*pol_sys_fiSx;
+public_key := Matrix(m,1,[(T*pol_sys_fiSx)[i,1] : i in [1..m]]);
 print("Clé publique : ");
 public_key;
