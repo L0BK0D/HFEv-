@@ -42,6 +42,7 @@ end function;
 invert := function(d, univF, S, T, n, m)
   // T^(-1)*d; // incompatible coefficient rings
   roots := [];
+  invT := T^(-1);
   iter := 0;
   while #roots eq 0 do
     completion := Matrix(n-m, 1, [0 : i in [1..n-m]]);
@@ -49,8 +50,7 @@ invert := function(d, univF, S, T, n, m)
     for i in [1..#bin_iter] do
       completion[n-m-i+1][1] := bin_iter[#bin_iter-i+1];
     end for;
-    iter +:= 1;
-    invT := T^(-1);
+    iter +:= 1;    
     invT_d := Matrix(F2,n,1,[&+[d[i]*invT[k,i] : i in [1..m]] + &+ [completion[i]*invT[k,i+m] : i in [1..n-m]] : k in [1..n]]);
     MPF2n_invT_d := invert_phi(invT_d, n);
     roots := Roots(univF-MPF2n_invT_d);

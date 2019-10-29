@@ -42,16 +42,22 @@ end function;
 invert := function(d, univF, S, T, n, m, v)
   // T^(-1)*d; // incompatible coefficient rings
   roots := [];
+  invT := T^(-1);
   while #roots eq 0 do
     completion := Matrix(n-m, 1, [Random(F2) : i in [1..n-m]]);
-    MPF2n_invT_d := invert_phi(Matrix(F2,n,1,[&+[d[i]*(T^(-1))[k,i] : i in [1..m]] + &+[completion[i]*(T^(-1))[k,i+m] : i in [1..n-m]] : k in [1..n]]), n);
+    MPF2n_invT_d := invert_phi(Matrix(F2,n,1,[&+[d[i]*invT[k,i] : i in [1..m]] + &+[completion[i]*invT[k,i+m] : i in [1..n-m]] : k in [1..n]]), n);
     vinegar := [Random(F2) : k in [1..v]]; // TODO: change from Random to ordered logic
     F_with_these_Vs := PF2n_to_UPF2n(Evaluate(univF, [PF2n.1] cat [vinegar[k] : k in [1..v]]));
-    roots := Roots(F_with_these_Vs-MPF2n_invT_d);
+    try
+      roots := Roots(F_with_these_Vs-MPF2n_invT_d);
+    catch e
+      print e;  // if F_with_these_Vs-MPF2n_invT_d is null, an error will be displayed.
+    end try;
   end while;
   r := Random(roots);  // maybe we should give more weight to roots with higher multiplicity? -> TODO
-  vect_r := phi(r[1],n+v);  // vertical matrix in F2;  // TODO: include vinegars here.
-  return Matrix(F2,n+v,1,[&+[vect_r[i][1]*(S^(-1))[k,i] : i in [1..n+v]] : k in [1..n+v]]), vinegar;
+  vect_r := Matrix(n+v, 1, [phi(r[1],n)[k][1]:k in [1..n]] cat vinegar);  // vertical matrix in F2;  // TODO: include vinegars here.
+  invS := S^(-1);
+  return Matrix(F2,n+v,1,[&+[vect_r[i][1]*invS[k,i] : i in [1..n+v]] : k in [1..n+v]]), vinegar;
 end function;
 
 sign := function(message, univF, S, T, n, m)

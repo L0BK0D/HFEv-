@@ -1,8 +1,8 @@
 
-n := 4; // messages length.  // from 21 and on, Zech log tables are used ; for lesser n values, the exponents go up without any limitation.
-D := 5; // degree of the F polynom.
-m := n-1; // number of equations in the f polynomial system.
-v := 2; // number of vinegar variables.
+n := 20; // messages length.  // from 21 and on, Zech log tables are used ; for lesser n values, the exponents go up without any limitation.
+D := 8; // degree of the F polynom.
+m := n-4; // number of equations in the f polynomial system.
+v := 5; // number of vinegar variables.
 
 /////////////////////////////////
 // Génération de la clé secrète :
@@ -127,25 +127,15 @@ T;
 x := Matrix(n+v,1,[MPF2n.i : i in [1..n+v]]);
 Sx := S*x;
 
+fi_of_Sx := hom < MPF2n -> MPF2n | [Sx[i][1] : i in [1..n+v]] >;
+
 get_pol_sys_fiSx := function(pol_sys_fi, Sx, n)
-  pol_sys_fiSx := Matrix(MPF2n, n, 1, [0 : i in [1..n]]);
+  pol_sys_fiSx := Matrix(MPF2n, n, 1, [fi_of_Sx(pol_sys_fi[i]) : i in [1..n]]);
   for i in [1..n] do
-    Monoms := Monomials(pol_sys_fi[i]);
+    Monoms := Monomials(pol_sys_fiSx[i][1]);
     for mon in Monoms do
-      Exps := Exponents(mon);
-      if Exps eq [0 : k in [1..n]] then
-        pol_sys_fiSx[i,1] := pol_sys_fiSx[i,1] + mon;
-      else
-        add := &*[Sx[k][1]^Exps[k] : k in [1..n]];
-        simplified_add := 0;
-        for M in Monomials(add) do
-          if 2 in Exponents(M) then
-            simplified_add := simplified_add + Sqrt(M);
-          else
-            simplified_add := simplified_add + M;
-          end if;
-        end for;
-        pol_sys_fiSx[i,1] := pol_sys_fiSx[i,1] + simplified_add;
+      if 2 in Exponents(mon) then
+        pol_sys_fiSx[i][1] +:= Sqrt(mon) - mon;
       end if;
     end for;
   end for;
