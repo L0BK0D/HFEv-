@@ -1,5 +1,5 @@
 
-n := 20; // messages length.  // from 21 and on, Zech log tables are used ; for lesser n values, the exponents go up without any limitation.
+n := 27; // messages length.  // from 21 and on, Zech log tables are used ; for lesser n values, the exponents go up without any limitation.
 D := 8; // degree of the F polynom.
 m := n-4; // number of equations in the f polynomial system.
 v := 5; // number of vinegar variables.
@@ -38,11 +38,11 @@ X_exp_2_exp_i := function(n, i)
 end function;
 
 make_A := function(D,n)
-  A := Matrix(F2n,n,n,[0 : i,j in [1..n]]);  // upper triangular matrix
+  A := Matrix(F2n,D-1,D-1,[0 : i,j in [1..D-1]]);  // upper triangular matrix
   for j in [2..n] do
     for i in [1..(j-1)] do
       if 2^(i-1)+2^(j-1) le D then
-        A[i,j] := Random(F2n);
+        A[2^(i-1),2^(j-1)] := Random(F2n);
       end if;
     end for;
   end for;
@@ -58,13 +58,14 @@ make_F := function(D,n,v)
   catch e
     "There is only one vinegar variable"; // we have an error if v eq 1 because then the sum quadratic sequence is null.
   end try;
-  multivariateF := &+ [ &+ [ A[i+1,j+1]*X_exp_2_exp_i(n,i)*X_exp_2_exp_i(n,j) : i in [0..j] ] : j in [0..(n-1)] ] + &+ [ (&+ [B[i+1,(k-n)]*MPF2n.k : k in [n+1..n+v]])*X_exp_2_exp_i(n,i) : i in [0..n-1]] + C;
-  univariateF := &+ [ &+ [ A[i+1,j+1]*PF2n.1^(2^i+2^j) : i in [0..j] ] : j in [0..(n-1)] ] + &+ [(&+ [B[i+1,k-1]*PF2n.k : k in [2..v+1]])*PF2n.1^(2^i) : i in [0..n-1]] + MPF2n_to_PF2n(C);
+  multivariateF := &+ [ &+ [ A[2^i,2^j]*X_exp_2_exp_i(n,i)*X_exp_2_exp_i(n,j) : i in [0..j] ] : j in [0..(Floor(Log(D-1)/Log(2))-1)] ] + &+ [ (&+ [B[i+1,(k-n)]*MPF2n.k : k in [n+1..n+v]])*X_exp_2_exp_i(n,i) : i in [0..n-1]] + C;
+  univariateF := &+ [ &+ [ A[2^i,2^j]*PF2n.1^(2^i+2^j) : i in [0..j] ] : j in [0..(Floor(Log(D-1)/Log(2))-1)] ] + &+ [(&+ [B[i+1,k-1]*PF2n.k : k in [2..v+1]])*PF2n.1^(2^i) : i in [0..n-1]] + MPF2n_to_PF2n(C);
   return multivariateF, univariateF;
 end function;
 
 F, univF := make_F(D,n,v);
-print "F(X) = ", univF;
+print "F(X)";
+// print "F(X) = ", univF;
 
 // Draft for changing F entirely, gave it up; anyways it wasn't necessary at all.
 // MPF2 := PolynomialRing(PF2,n);
@@ -101,7 +102,7 @@ end function;
 
 pol_sys_fi := get_pol_sys_fi(F,n);
 print("Système polynomial f : ");
-pol_sys_fi;
+// pol_sys_fi;
 
 
 S := RandomMatrix(F2,n+v,n+v);
@@ -115,9 +116,9 @@ end while;
 S := ChangeRing(S, MPF2n); // to allow multiplication with elements in MPF2n
 T := ChangeRing(T, MPF2n);
 print("Matrice de changement de variables S : ");
-S;
+// S;
 print("Matrice de mélange d'équations T : ");
-T;
+// T;
 
 
 //////////////////////////////////
@@ -146,4 +147,4 @@ pol_sys_fiSx := get_pol_sys_fiSx(pol_sys_fi, Sx, n);
 
 public_key := Matrix(m,1,[(T*pol_sys_fiSx)[i,1] : i in [1..m]]);
 print("Clé publique : ");
-public_key;
+// public_key;

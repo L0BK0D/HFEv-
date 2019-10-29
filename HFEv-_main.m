@@ -43,11 +43,27 @@ invert := function(d, univF, S, T, n, m, v)
   // T^(-1)*d; // incompatible coefficient rings
   roots := [];
   invT := T^(-1);
+  iter := 0;
+  vinegar := [0 : k in [1..v]]; // TODO: change from Random to ordered logic
+  F_with_these_Vs := PF2n_to_UPF2n(Evaluate(univF, [PF2n.1] cat [vinegar[k] : k in [1..v]]));
   while #roots eq 0 do
-    completion := Matrix(n-m, 1, [Random(F2) : i in [1..n-m]]);
+    completion := Matrix(n-m, 1, [0 : i in [1..n-m]]);
+    new_vinegar := [0 : k in [1..v]];
+    bin_iter := Intseq(iter, 2);
+    for i in [1..Minimum(n-m, #bin_iter)] do
+      completion[n-m-i+1][1] := bin_iter[#bin_iter-i+1];
+    end for;
+    if #bin_iter gt (n-m) then
+      for i in [(n-m+1)..Minimum(#bin_iter,n-m+v)] do
+        new_vinegar[i-n+m] := bin_iter[#bin_iter-i+1];
+      end for;
+    end if;
+    iter +:= 1;
     MPF2n_invT_d := invert_phi(Matrix(F2,n,1,[&+[d[i]*invT[k,i] : i in [1..m]] + &+[completion[i]*invT[k,i+m] : i in [1..n-m]] : k in [1..n]]), n);
-    vinegar := [Random(F2) : k in [1..v]]; // TODO: change from Random to ordered logic
-    F_with_these_Vs := PF2n_to_UPF2n(Evaluate(univF, [PF2n.1] cat [vinegar[k] : k in [1..v]]));
+    if new_vinegar ne vinegar then
+      F_with_these_Vs := PF2n_to_UPF2n(Evaluate(univF, [PF2n.1] cat [new_vinegar[k] : k in [1..v]]));
+      vinegar := new_vinegar;
+    end if;
     try
       roots := Roots(F_with_these_Vs-MPF2n_invT_d);
     catch e
@@ -55,21 +71,25 @@ invert := function(d, univF, S, T, n, m, v)
     end try;
   end while;
   r := Random(roots);  // maybe we should give more weight to roots with higher multiplicity? -> TODO
-  vect_r := Matrix(n+v, 1, [phi(r[1],n)[k][1]:k in [1..n]] cat vinegar);  // vertical matrix in F2;  // TODO: include vinegars here.
+  vect_r := Matrix(n+v, 1, [phi(r[1],n)[k][1]:k in [1..n]] cat vinegar);  // vertical matrix in F2;
+  print iter, " complétion.s testée.s pour l'inversion.";
   invS := S^(-1);
   return Matrix(F2,n+v,1,[&+[vect_r[i][1]*invS[k,i] : i in [1..n+v]] : k in [1..n+v]]), vinegar;
 end function;
 
-sign := function(message, univF, S, T, n, m)
+sign := function(message, univF, S, T, n, m, v)
   H := Intseq(Hash(message),2);
-  Si := Matrix(F2,n,1,[0 : k in [1..n]]);
+  Si := Matrix(F2,m,1,[0 : k in [1..m]]);
   found_inverse := false;
   iter := 1;
   while found_inverse eq false do
-    D := Matrix(F2,n,1,[H[k] : k in [1..n]]);
+    D := Matrix(F2,m,1,[0 : k in [1..m]]);
+    for k in [1..Minimum(m,#H)] do
+      D[k][1] := H[k];
+    end for;
     DxorSi := D + Si;    // addition in F2 is a xor operation.
     try
-      Si := invert(DxorSi, univF, S, T, n, m);
+      Si := invert(DxorSi, univF, S, T, n, m, v);
       found_inverse := true;
     catch e
       print Transpose(DxorSi), " n'est pas inversible.";
@@ -80,7 +100,7 @@ sign := function(message, univF, S, T, n, m)
   return Si, iter;
 end function;
 
-check_signature := function(signature, message, public_key, nb_ite, m)
+check_signature := function(signature, message, public_key, nb_ite, m, n, v)
   H := Intseq(Hash(message),2);
   Si := signature;
   // D := Matrix(F2, nb_ite, n, [0 : k in [1..n*nb_ite]]);
@@ -92,7 +112,7 @@ check_signature := function(signature, message, public_key, nb_ite, m)
   // for i in [(nb_ite-1)..0] do
   //   Si := Matrix(F2,n,1,[Evaluate(public_key, [Si[k]: k in [1..n]])[k] : k in [1..n]]) + D[i];
   // end for;
-  Si := Matrix(F2,m,1,[Evaluate(public_key, [Si[l][1]: l in [1..n]])[k] : k in [1..m]]) + D;
+  Si := Matrix(F2,m,1,[Evaluate(public_key, [Si[l][1]: l in [1..n+v]])[k] : k in [1..m]]) + D;
   if Si eq Matrix(F2,m,1,[0 : k in [1..m]]) then
     return "La signature est valide.";
   else
@@ -125,15 +145,15 @@ print("Chiffrement de l'inverse du message chiffré : ");
 Transpose(cipher([inverted_cipher_m[k][1] : k in [1..n]], public_key, [inverted_cipher_m[k][1] : k in [n+1..n+v]], m));
 // Transpose(cipher([inverted_cipher_m[k][1] : k in [1..n]], public_key, inverted_cipher_m_vinegars, m));
 
-// // nb_ite := 4;
-// m_signature, m_sign_iters := sign(message, univF, S, T, n, m);
-// if m_sign_iters eq 1 then
-//   print "signature du message, en 1 itération : ";
-// else
-//   print "signature du message, en ", m_sign_iters, " itérations : ";
-// end if;
-// Transpose(m_signature);
-//
-// // Signature verification :
-// verif := check_signature(m_signature, message, public_key, m_sign_iters, m);
-// print verif;
+// nb_ite := 4;
+m_signature, m_sign_iters := sign(message, univF, S, T, n, m, v);
+if m_sign_iters eq 1 then
+  print "signature du message, en 1 itération : ";
+else
+  print "signature du message, en ", m_sign_iters, " itérations : ";
+end if;
+Transpose(m_signature);
+
+// Signature verification :
+verif := check_signature(m_signature, message, public_key, m_sign_iters, m, n, v);
+print verif;
